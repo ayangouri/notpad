@@ -55,6 +55,11 @@ body{
 .big .tm{transform-origin:50px 50px;animation-duration:1.8s}
 @keyframes bigin{to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 .skip{position:absolute;z-index:2;left:0;right:0;text-align:center;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));font-size:.7rem;letter-spacing:3px;color:#c9a0a0;text-transform:uppercase;opacity:0;animation:pin 1s 1s forwards}
+#intro *{animation-play-state:paused}
+#intro.play *{animation-play-state:running}
+.pick{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:2rem;text-align:center;color:#e6cfcf;letter-spacing:1.5px;font-size:.9rem;line-height:1.6;background:#000;cursor:default}
+.pick[hidden]{display:none}
+.pick .btn{justify-content:center}
 
 /* embers */
 .ember{position:absolute;bottom:-10px;border-radius:50%;background:#c33;box-shadow:0 0 10px 2px rgba(220,60,60,.6);
@@ -160,9 +165,9 @@ body.paused *{animation-play-state:paused!important}
   </svg>
 </div>
 
-<div id="intro" aria-hidden="true">
-  <div class="scene">
-    <img src="itachi.jpg" alt="">
+<div id="intro">
+  <div class="scene" aria-hidden="true">
+    <img id="art" alt="">
     <div class="moonglow"></div>
     <div class="crows"><div class="ic" style="top:14%;--dy:-200%;animation-delay:0.6s"><svg viewBox="0 0 64 32"><path d="M0 14 Q16 0 32 16 Q48 0 64 14 Q48 12 32 24 Q16 12 0 14Z"/></svg></div><div class="ic" style="top:30%;--dy:120%;animation-delay:1.4s"><svg viewBox="0 0 64 32"><path d="M0 14 Q16 0 32 16 Q48 0 64 14 Q48 12 32 24 Q16 12 0 14Z"/></svg></div><div class="ic" style="top:22%;--dy:-120%;animation-delay:2.4s"><svg viewBox="0 0 64 32"><path d="M0 14 Q16 0 32 16 Q48 0 64 14 Q48 12 32 24 Q16 12 0 14Z"/></svg></div><div class="ic" style="top:38%;--dy:160%;animation-delay:0.2s"><svg viewBox="0 0 64 32"><path d="M0 14 Q16 0 32 16 Q48 0 64 14 Q48 12 32 24 Q16 12 0 14Z"/></svg></div></div>
     <svg viewBox="0 0 675 1200" xmlns="http://www.w3.org/2000/svg">
@@ -182,12 +187,17 @@ body.paused *{animation-play-state:paused!important}
       <circle cx="344.6" cy="533.8" r=".8"/></g>
     </svg>
   </div>
-  <svg class="big" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <svg class="big" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <circle cx="50" cy="50" r="48" fill="#b3261e"/>
     <circle cx="50" cy="50" r="34" fill="none" stroke="#1a0608" stroke-width="1.5"/>
     <g class="tm" fill="#0a0305"><circle cx="50" cy="22" r="7"/><circle cx="74" cy="64" r="7"/><circle cx="26" cy="64" r="7"/></g>
     <circle cx="50" cy="50" r="9" fill="#0a0305"/>
   </svg>
+  <div class="pick" id="pick" hidden>
+    <p>Itachi ki image select karo<br>(wahi moon wali image)</p>
+    <label class="btn">CHOOSE IMAGE<input id="file" type="file" accept="image/*" hidden></label>
+    <button class="btn" id="skipPick" type="button">SKIP</button>
+  </div>
   <div class="skip">tap to skip</div>
 </div>
 
@@ -335,13 +345,38 @@ body.paused *{animation-play-state:paused!important}
   saveBtn.addEventListener('click',add);
 
   /* intro -> app */
-  var intro=document.getElementById('intro'), started=false;
+  var intro=document.getElementById('intro'), started=false, playing=false;
+  var art=document.getElementById('art'), pick=document.getElementById('pick'), file=document.getElementById('file'), IMGKEY='itachi_img_v1';
   function startApp(){
     if(started) return; started=true;
     intro.classList.add('gone'); document.body.classList.add('ready');
     setTimeout(function(){intro.remove()},800);
   }
-  if(reduce){startApp()}else{intro.addEventListener('click',startApp); setTimeout(startApp,5100)}
+  function play(){
+    if(playing||started) return; playing=true; pick.hidden=true; intro.classList.add('play');
+    setTimeout(startApp,5100);
+  }
+  if(reduce){startApp()}else{
+    intro.addEventListener('click',function(){if(playing)startApp()});
+    pick.addEventListener('click',function(e){e.stopPropagation()});
+    document.getElementById('skipPick').addEventListener('click',startApp);
+    var saved=null,tried=false; try{saved=localStorage.getItem(IMGKEY)}catch(e){}
+    art.onload=play;
+    art.onerror=function(){ if(saved&&!tried){tried=true;art.src='itachi.jpg'}else{pick.hidden=false} };
+    file.addEventListener('change',function(){
+      var f=file.files&&file.files[0]; if(!f) return;
+      var url=URL.createObjectURL(f), im=new Image();
+      im.onload=function(){
+        var w=Math.min(im.width,675), h=Math.round(im.height*w/im.width), c=document.createElement('canvas');
+        c.width=w; c.height=h; c.getContext('2d').drawImage(im,0,0,w,h);
+        var d=c.toDataURL('image/jpeg',.88);
+        try{localStorage.setItem(IMGKEY,d)}catch(e){}
+        art.src=d; URL.revokeObjectURL(url);
+      };
+      im.src=url;
+    });
+    art.src=saved||'itachi.jpg';
+  }
 
   embers(); load();
 })();
